@@ -1,0 +1,112 @@
+# Fuel sender: KUS SSS/SSL series, 25", 240-33 Ohm (US standard: 240 = empty, 33 = full).
+# Wiring: R_REF from 3.3V to the ADC node, sender from the ADC node to ground.
+substitutions:
+  # Value of the inline divider resistor, in ohms. Measure the actual part with a
+  # DMM and put the real value here -- a 5% 150R part can be anywhere in 142.5-157.5.
+  r_ref: "150.0"
+  # Rail feeding the top of the divider. Measure the ESP32 3V3 pin under load.
+  v_supply: "3.3"
+  # Sender endpoints.
+  r_empty: "240.0"
+  r_full: "33.0"
+  # Outside this window the reading is a fault (open circuit, short, or a chafed
+  # wire), not a fuel level. 320R still reads 2.25V, safely below the ADC's clip
+  # point, so an open circuit is genuinely detectable rather than just saturated.
+  r_fault_high: "320.0"
+  r_fault_low: "10.0"
+
+esphome:
+  name: defiant-analogs
+  friendly_name: Defiant Analogs
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+wifi:
+  ssid: "SVDefiant"
+  password: !secret wifi_password
+  ap:
+    ssid: "Defiant Analogs Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+sensor:
+  # Sampled every second, median-filtered over a minute. Median rather than a
+  # moving average because fuel slosh under way is an outlier problem, not a
+  # gaussian-noise problem -- a mean chases the peaks, a median ignores them.
+  - platform: adc
+    pin: GPIO36
+    name: "Fuel Sender Voltage"
+    id: fuel_voltage
+    attenuation: 12db
+    accuracy_decimals: 3
+    entity_category: diagnostic
+    update_interval: 1s
+    filters:
+      - median:
+          window_size: 60
+          send_every: 60
+    on_value:
+      # Keep the derived sensors in lockstep with the voltage they came from;
+      # these run in order, so resistance is fresh before level reads it.
+      then:
+        - component.update: fuel_resistance
+        - component.update: fuel_level
+
+  - platform: template
+    name: "Fuel Sender Resistance"
+    id: fuel_resistance
+    unit_of_measurement: "Ω"
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    update_interval: never
+    lambda: |-
+      const float v = id(fuel_voltage).state;
+      if (std::isnan(v) || v >= ${v_supply}) return NAN;
+      return (v * ${r_ref}) / (${v_supply} - v);
+
+  # Tank fullness as a 0.0-1.0 ratio (Signal K / NMEA currentLevel convention).
+  # For a 0-100 percentage instead, multiply by 100 and set unit to "%".
+  - platform: template
+    name: "Fuel Level"
+    id: fuel_level
+    icon: "mdi:gas-station"
+    accuracy_decimals: 3
+    update_interval: never
+    lambda: |-
+      const float r = id(fuel_resistance).state;
+      if (std::isnan(r) || r > ${r_fault_high} || r < ${r_fault_low}) return NAN;
+      const float level = (${r_empty} - r) / (${r_empty} - ${r_full});
+      return clamp(level, 0.0f, 1.0f);
+    filters:
+      # The sender is linear in resistance vs. float arm angle, but the tank is
+      # not necessarily linear in angle vs. gallons. Once you have stick or
+      # fill-up data, add the correction here, e.g.:
+      #   - calibrate_linear:
+      #       - 0.00 -> 0.00
+      #       - 0.50 -> 0.44
+      #       - 1.00 -> 1.00
+      []
+
+  - platform: adc
+    pin: GPIO39
+    name: "Hall Sensor Voltage"
+    attenuation: 12db
+    update_interval: 10s
+
+  - platform: wifi_signal
+    name: "Defiant Analogs WiFi Signal"
+    update_interval: 60s
