@@ -85,7 +85,8 @@ Signal K runs as user `pi` from `/home/pi/.signalk`, on port 3000.
   - Solar from 4 MPPTs at `electrical.solar.<288|289|290|291>.*`, plus the
     total in `electrical.venus.totalPanelPower`.
   - The wind generator (SmartShunt "Windy") at `electrical.dcsource.292.*`.
-  - The DC/DC charger, whenever it's plugged in.
+  - The DC/DC charger (Orion XS 12/12-50A, "Engine to House Bank") at
+    `electrical.alternator.291.*`.
 
   The plugin supports only one host, so the Cerbo (MultiPlus, House Bank shunt)
   isn't connected.
