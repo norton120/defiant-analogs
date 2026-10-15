@@ -8,3 +8,4 @@ secrets*.yaml*
 *.bak
 # ...but the placeholder template is meant to be public.
 !secrets.yaml.example
+__pycache__/

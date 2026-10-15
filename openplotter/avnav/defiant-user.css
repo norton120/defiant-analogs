@@ -1,0 +1,10 @@
+/* ---- Defiant power widgets ---- */
+.defiantBig { font-size: 2.2em; line-height: 1.1; }
+.defiantSub { font-size: 1.1em; }
+.defiantRow { display: flex; justify-content: space-between; font-size: 0.95em; padding: 0 0.3em; }
+.defiantChg { color: #2e9d4c; }
+.defiantDis { color: #d9822b; }
+.defiantDim { opacity: 0.6; }
+.defiantWarn { color: #d03b3b; font-size: 0.9em; }
+.defiantSolar { display: flex; flex-direction: column; width: 100%; }
+.defiantSolarTotal { font-size: 2em; text-align: right; padding-right: 0.3em; }

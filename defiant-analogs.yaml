@@ -33,20 +33,30 @@ wifi:
 
 captive_portal:
 
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [signalk]
+
 logger:
 
 api:
   encryption:
     key: !secret api_encryption_key
+  reboot_timeout: 0s
 
 ota:
   - platform: esphome
     password: !secret ota_password
 
 sensor:
-  # Sampled every second, median-filtered over a minute. Median rather than a
-  # moving average because fuel slosh under way is an outlier problem, not a
-  # gaussian-noise problem -- a mean chases the peaks, a median ignores them.
+  # Sampled and published every second. Median-of-3 rejects a single glitchy
+  # ADC sample (e.g. a splash off the pour hitting the float arm) without
+  # adding real lag -- fast enough to read live while filling the tank and
+  # know when to stop. If it's still too laggy, drop window_size to 1 to
+  # publish raw samples; if it's too twitchy at the dock, raise both back up
+  # (60/60 gives a ~60s-smoothed reading, better suited to slosh underway).
   - platform: adc
     pin: GPIO36
     name: "Fuel Sender Voltage"
@@ -57,8 +67,8 @@ sensor:
     update_interval: 1s
     filters:
       - median:
-          window_size: 60
-          send_every: 60
+          window_size: 3
+          send_every: 1
     on_value:
       # Keep the derived sensors in lockstep with the voltage they came from;
       # these run in order, so resistance is fresh before level reads it.
@@ -110,3 +120,32 @@ sensor:
   - platform: wifi_signal
     name: "Defiant Analogs WiFi Signal"
     update_interval: 60s
+
+# One clean line on the USB serial console every 2s -- meant for watching
+# live while filling the tank, without wading through logger-VERBOSE noise
+# from WiFi/API (ESPHome logs each sensor's own "Sending state" at VERBOSE,
+# and a per-tag override can't go more verbose than the global DEBUG level).
+interval:
+  - interval: 2s
+    then:
+      - lambda: |-
+          ESP_LOGI("fill", "level=%.1f%%  R=%.1fΩ  V=%.3fV",
+                    id(fuel_level).state * 100.0f,
+                    id(fuel_resistance).state,
+                    id(fuel_voltage).state);
+
+# Straight to Signal K (OpenPlotter) as UDP broadcast deltas -- see
+# components/signalk/. Level is already the 0-1 ratio Signal K expects. A NaN
+# level means the sender reading is outside the fault window above (open
+# circuit, short, chafed wire), so that's what the alarm reports.
+signalk:
+  source: defiant-analogs
+  sensors:
+    - sensor_id: fuel_level
+      path: tanks.fuel.0.currentLevel
+  alarms:
+    - sensor_id: fuel_level
+      path: tanks.fuel.0.senderFault
+      when: missing
+      state: warn
+      message: "Fuel sender fault: reading out of range (open circuit, short, or chafed wire)"

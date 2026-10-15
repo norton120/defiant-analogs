@@ -1,0 +1,269 @@
+# Dedicated BLE reader for Bank II's 3 WattCycle LiFePO4 packs (TDT "smart BMS"
+# hardware inside). Talks to exactly these 3 devices, nothing else -- no
+# scanning for Victron units, temp sensors, or the propane sensor -- so BLE
+# connection reliability doesn't compete with the rest of the boat's BLE
+# fleet. See components/tdt_bms/ for the ported protocol (from
+# patman15/aiobmsble's tdt_bms.py).
+substitutions:
+  # MACs confirmed via HA's device registry (bms_ble device `connections`,
+  # looked up per entity with the /api/template device_attr() call) against
+  # the "BANK II A/B/C" friendly names HA showed (HA is now retired) -- not the old
+  # bms_ble entity slugs, which are unreliable/renamed inconsistently.
+  battery_1_mac: "C0:D6:3C:50:75:ED"  # BANK II A
+  battery_2_mac: "C0:D6:3C:50:FB:D5"  # BANK II B
+  battery_3_mac: "C0:D6:3C:50:79:1E"  # BANK II C
+  battery_1_key: "bank2a"
+  battery_2_key: "bank2b"
+  battery_3_key: "bank2c"
+  battery_1_name: "Bank II A"
+  battery_2_name: "Bank II B"
+  battery_3_name: "Bank II C"
+
+esphome:
+  name: defiant-bms-bank2
+  friendly_name: Defiant BMS Bank II
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+esp32_ble_tracker:
+
+esp32_ble:
+  # 3 simultaneous GATT connections is the practical reliable ceiling for one
+  # ESP32 radio -- matches "one ESP32 per bank of 3" exactly, so there's no
+  # slack being traded away here.
+  max_connections: 3
+
+wifi:
+  ssid: "SVDefiant"
+  password: !secret wifi_password
+  ap:
+    ssid: "Defiant BMS Bank II Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+logger:
+
+api:
+  encryption:
+    key: !secret bank2_api_encryption_key
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+ble_client:
+  - mac_address: ${battery_1_mac}
+    id: battery_1_ble
+  - mac_address: ${battery_2_mac}
+    id: battery_2_ble
+  - mac_address: ${battery_3_mac}
+    id: battery_3_ble
+
+sensor:
+  - platform: tdt_bms
+    ble_client_id: battery_1_ble
+    id: battery_1_bms
+    update_interval: 30s
+    voltage:
+      name: "${battery_1_name} Voltage"
+      id: battery_1_voltage
+    current:
+      name: "${battery_1_name} Current"
+      id: battery_1_current
+    power:
+      name: "${battery_1_name} Power"
+      id: battery_1_power
+    battery_level:
+      name: "${battery_1_name} Battery Level"
+      id: battery_1_battery_level
+      # No reading for 2 min (BLE up but BMS silent) -> NaN -> "not reporting".
+      filters:
+        - timeout: 120s
+    cycles:
+      name: "${battery_1_name} Cycles"
+    cell_voltage_min:
+      name: "${battery_1_name} Cell Voltage Min"
+    cell_voltage_max:
+      name: "${battery_1_name} Cell Voltage Max"
+    cell_voltage_delta:
+      name: "${battery_1_name} Cell Voltage Delta"
+    temperature_ambient:
+      name: "${battery_1_name} Temperature Ambient"
+    temperature_mosfet:
+      name: "${battery_1_name} Temperature Mosfet"
+    problem_code:
+      id: battery_1_problem_code
+      name: "${battery_1_name} Problem Code"
+
+  - platform: tdt_bms
+    ble_client_id: battery_2_ble
+    id: battery_2_bms
+    update_interval: 30s
+    voltage:
+      name: "${battery_2_name} Voltage"
+      id: battery_2_voltage
+    current:
+      name: "${battery_2_name} Current"
+      id: battery_2_current
+    power:
+      name: "${battery_2_name} Power"
+      id: battery_2_power
+    battery_level:
+      name: "${battery_2_name} Battery Level"
+      id: battery_2_battery_level
+      # No reading for 2 min (BLE up but BMS silent) -> NaN -> "not reporting".
+      filters:
+        - timeout: 120s
+    cycles:
+      name: "${battery_2_name} Cycles"
+    cell_voltage_min:
+      name: "${battery_2_name} Cell Voltage Min"
+    cell_voltage_max:
+      name: "${battery_2_name} Cell Voltage Max"
+    cell_voltage_delta:
+      name: "${battery_2_name} Cell Voltage Delta"
+    temperature_ambient:
+      name: "${battery_2_name} Temperature Ambient"
+    temperature_mosfet:
+      name: "${battery_2_name} Temperature Mosfet"
+    problem_code:
+      id: battery_2_problem_code
+      name: "${battery_2_name} Problem Code"
+
+  - platform: tdt_bms
+    ble_client_id: battery_3_ble
+    id: battery_3_bms
+    update_interval: 30s
+    voltage:
+      name: "${battery_3_name} Voltage"
+      id: battery_3_voltage
+    current:
+      name: "${battery_3_name} Current"
+      id: battery_3_current
+    power:
+      name: "${battery_3_name} Power"
+      id: battery_3_power
+    battery_level:
+      name: "${battery_3_name} Battery Level"
+      id: battery_3_battery_level
+      # No reading for 2 min (BLE up but BMS silent) -> NaN -> "not reporting".
+      filters:
+        - timeout: 120s
+    cycles:
+      name: "${battery_3_name} Cycles"
+    cell_voltage_min:
+      name: "${battery_3_name} Cell Voltage Min"
+    cell_voltage_max:
+      name: "${battery_3_name} Cell Voltage Max"
+    cell_voltage_delta:
+      name: "${battery_3_name} Cell Voltage Delta"
+    temperature_ambient:
+      name: "${battery_3_name} Temperature Ambient"
+    temperature_mosfet:
+      name: "${battery_3_name} Temperature Mosfet"
+    problem_code:
+      id: battery_3_problem_code
+      name: "${battery_3_name} Problem Code"
+
+  - platform: wifi_signal
+    name: "Defiant BMS Bank II WiFi Signal"
+    update_interval: 60s
+
+binary_sensor:
+  - platform: tdt_bms
+    tdt_bms_id: battery_1_bms
+    charging:
+      name: "${battery_1_name} Charging"
+    discharging:
+      name: "${battery_1_name} Discharging"
+    problem:
+      name: "${battery_1_name} Problem"
+
+  - platform: tdt_bms
+    tdt_bms_id: battery_2_bms
+    charging:
+      name: "${battery_2_name} Charging"
+    discharging:
+      name: "${battery_2_name} Discharging"
+    problem:
+      name: "${battery_2_name} Problem"
+
+  - platform: tdt_bms
+    tdt_bms_id: battery_3_bms
+    charging:
+      name: "${battery_3_name} Charging"
+    discharging:
+      name: "${battery_3_name} Discharging"
+    problem:
+      name: "${battery_3_name} Problem"
+
+# Straight to Signal K (OpenPlotter) as UDP broadcast deltas -- see
+# components/signalk/. Battery level is a percent here; Signal K's
+# stateOfCharge is a 0-1 ratio. Current is positive charging, negative
+# discharging. A missing battery level means the pack's BLE link dropped or
+# the BMS went silent for 2 min (timeout filter above).
+signalk:
+  source: defiant-bms-bank2
+  sensors:
+    - sensor_id: battery_1_battery_level
+      path: electrical.batteries.${battery_1_key}.capacity.stateOfCharge
+      multiply: 0.01
+    - sensor_id: battery_1_current
+      path: electrical.batteries.${battery_1_key}.current
+    - sensor_id: battery_1_power
+      path: electrical.batteries.${battery_1_key}.power
+    - sensor_id: battery_1_voltage
+      path: electrical.batteries.${battery_1_key}.voltage
+    - sensor_id: battery_2_battery_level
+      path: electrical.batteries.${battery_2_key}.capacity.stateOfCharge
+      multiply: 0.01
+    - sensor_id: battery_2_current
+      path: electrical.batteries.${battery_2_key}.current
+    - sensor_id: battery_2_power
+      path: electrical.batteries.${battery_2_key}.power
+    - sensor_id: battery_2_voltage
+      path: electrical.batteries.${battery_2_key}.voltage
+    - sensor_id: battery_3_battery_level
+      path: electrical.batteries.${battery_3_key}.capacity.stateOfCharge
+      multiply: 0.01
+    - sensor_id: battery_3_current
+      path: electrical.batteries.${battery_3_key}.current
+    - sensor_id: battery_3_power
+      path: electrical.batteries.${battery_3_key}.power
+    - sensor_id: battery_3_voltage
+      path: electrical.batteries.${battery_3_key}.voltage
+  alarms:
+    - sensor_id: battery_1_problem_code
+      path: electrical.batteries.${battery_1_key}.bmsFault
+      when: nonzero
+      message: "${battery_1_name} BMS fault"
+    - sensor_id: battery_1_battery_level
+      path: electrical.batteries.${battery_1_key}.notReporting
+      when: missing
+      message: "${battery_1_name} not reporting"
+    - sensor_id: battery_2_problem_code
+      path: electrical.batteries.${battery_2_key}.bmsFault
+      when: nonzero
+      message: "${battery_2_name} BMS fault"
+    - sensor_id: battery_2_battery_level
+      path: electrical.batteries.${battery_2_key}.notReporting
+      when: missing
+      message: "${battery_2_name} not reporting"
+    - sensor_id: battery_3_problem_code
+      path: electrical.batteries.${battery_3_key}.bmsFault
+      when: nonzero
+      message: "${battery_3_name} BMS fault"
+    - sensor_id: battery_3_battery_level
+      path: electrical.batteries.${battery_3_key}.notReporting
+      when: missing
+      message: "${battery_3_name} not reporting"
