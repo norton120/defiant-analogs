@@ -8,3 +8,4 @@
 .defiantWarn { color: #d03b3b; font-size: 0.9em; }
 .defiantSolar { display: flex; flex-direction: column; width: 100%; }
 .defiantSolarTotal { font-size: 2em; text-align: right; padding-right: 0.3em; }
+.defiantCompare { font-weight: bold; border-bottom: 1px solid rgba(128,128,128,0.4); margin-bottom: 0.2em; }

@@ -33,7 +33,7 @@ class SignalK : public Component {
 
   void add_sensor(sensor::Sensor *sensor, const std::string &path, float multiply, float offset);
   void add_alarm(sensor::Sensor *sensor, const std::string &path, AlarmWhen when, const std::string &message,
-                 const std::string &state, uint32_t delay);
+                 const std::string &state, uint32_t delay, uint32_t ignore_mask);
 
  protected:
   struct Alarm {
@@ -43,6 +43,7 @@ class SignalK : public Component {
     std::string message;
     std::string state;
     uint32_t delay;
+    uint32_t ignore_mask;         // NONZERO only: bits that don't count as a fault
     uint32_t condition_since{0};  // millis() when the condition started holding, 0 = not holding
     uint8_t clears_pending{0};    // null deltas still to send after the alarm clears
   };

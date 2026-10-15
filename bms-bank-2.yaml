@@ -5,6 +5,11 @@
 # fleet. See components/tdt_bms/ for the ported protocol (from
 # patman15/aiobmsble's tdt_bms.py).
 substitutions:
+  # Problem-code bits that show up on healthy packs sitting at 100% (0x0400 on
+  # most, 0x0100 on one), so they're treated as "full" status flags rather than
+  # faults. Inferred from live data on 2026-10-15; TDT doesn't document the bits.
+  # The raw code is still published as bmsProblemCode.
+  bms_status_bits: "0x0500"
   # MACs confirmed via HA's device registry (bms_ble device `connections`,
   # looked up per entity with the /api/template device_attr() call) against
   # the "BANK II A/B/C" friendly names HA showed (HA is now retired) -- not the old
@@ -224,6 +229,8 @@ signalk:
       path: electrical.batteries.${battery_1_key}.power
     - sensor_id: battery_1_voltage
       path: electrical.batteries.${battery_1_key}.voltage
+    - sensor_id: battery_1_problem_code
+      path: electrical.batteries.${battery_1_key}.bmsProblemCode
     - sensor_id: battery_2_battery_level
       path: electrical.batteries.${battery_2_key}.capacity.stateOfCharge
       multiply: 0.01
@@ -233,6 +240,8 @@ signalk:
       path: electrical.batteries.${battery_2_key}.power
     - sensor_id: battery_2_voltage
       path: electrical.batteries.${battery_2_key}.voltage
+    - sensor_id: battery_2_problem_code
+      path: electrical.batteries.${battery_2_key}.bmsProblemCode
     - sensor_id: battery_3_battery_level
       path: electrical.batteries.${battery_3_key}.capacity.stateOfCharge
       multiply: 0.01
@@ -242,10 +251,13 @@ signalk:
       path: electrical.batteries.${battery_3_key}.power
     - sensor_id: battery_3_voltage
       path: electrical.batteries.${battery_3_key}.voltage
+    - sensor_id: battery_3_problem_code
+      path: electrical.batteries.${battery_3_key}.bmsProblemCode
   alarms:
     - sensor_id: battery_1_problem_code
       path: electrical.batteries.${battery_1_key}.bmsFault
       when: nonzero
+      ignore_mask: ${bms_status_bits}
       message: "${battery_1_name} BMS fault"
     - sensor_id: battery_1_battery_level
       path: electrical.batteries.${battery_1_key}.notReporting
@@ -254,6 +266,7 @@ signalk:
     - sensor_id: battery_2_problem_code
       path: electrical.batteries.${battery_2_key}.bmsFault
       when: nonzero
+      ignore_mask: ${bms_status_bits}
       message: "${battery_2_name} BMS fault"
     - sensor_id: battery_2_battery_level
       path: electrical.batteries.${battery_2_key}.notReporting
@@ -262,6 +275,7 @@ signalk:
     - sensor_id: battery_3_problem_code
       path: electrical.batteries.${battery_3_key}.bmsFault
       when: nonzero
+      ignore_mask: ${bms_status_bits}
       message: "${battery_3_name} BMS fault"
     - sensor_id: battery_3_battery_level
       path: electrical.batteries.${battery_3_key}.notReporting

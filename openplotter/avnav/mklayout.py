@@ -33,9 +33,10 @@ layout["widgets"]["gpspage4"] = {
         pack("bank1c", "Bank I C"),
         pack("bank2a", "Bank II A"),
         pack("bank2b", "Bank II B"),
+        {"name": "DefiantDcDc", "caption": "DC/DC (engine)"},
     ],
     "right": [
-        {"name": "DefiantSolar", "caption": "Solar", "weight": 2},
+        {"name": "DefiantSolar", "caption": "Solar", "weight": 2.3},
         pack("bank2c", "Bank II C"),
         pack("bank3-1", "Bank III 1"),
         pack("bank3-2", "Bank III 2"),

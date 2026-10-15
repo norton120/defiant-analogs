@@ -23,6 +23,7 @@ CONF_WHEN = "when"
 CONF_MESSAGE = "message"
 CONF_STATE = "state"
 CONF_DELAY = "delay"
+CONF_IGNORE_MASK = "ignore_mask"
 
 ALARM_WHEN = {
     "nonzero": AlarmWhen.NONZERO,
@@ -66,6 +67,8 @@ ALARM_SCHEMA = cv.Schema(
         cv.Optional(CONF_STATE, default="alarm"): cv.one_of(*NOTIFICATION_STATES, lower=True),
         # How long the condition must hold before the alarm is raised.
         cv.Optional(CONF_DELAY, default="60s"): cv.positive_time_period_milliseconds,
+        # `nonzero` only: bits that are status flags rather than faults.
+        cv.Optional(CONF_IGNORE_MASK, default=0): cv.hex_uint32_t,
     }
 )
 
@@ -104,6 +107,7 @@ async def to_code(config):
         sens = await cg.get_variable(conf[CONF_SENSOR_ID])
         cg.add(
             var.add_alarm(
-                sens, conf[CONF_PATH], conf[CONF_WHEN], conf[CONF_MESSAGE], conf[CONF_STATE], conf[CONF_DELAY]
+                sens, conf[CONF_PATH], conf[CONF_WHEN], conf[CONF_MESSAGE], conf[CONF_STATE], conf[CONF_DELAY],
+                conf[CONF_IGNORE_MASK],
             )
         )

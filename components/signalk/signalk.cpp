@@ -38,8 +38,8 @@ void SignalK::add_sensor(sensor::Sensor *sensor, const std::string &path, float 
 }
 
 void SignalK::add_alarm(sensor::Sensor *sensor, const std::string &path, AlarmWhen when, const std::string &message,
-                        const std::string &state, uint32_t delay) {
-  alarms_.push_back(Alarm{sensor, "notifications." + path, when, message, state, delay});
+                        const std::string &state, uint32_t delay, uint32_t ignore_mask) {
+  alarms_.push_back(Alarm{sensor, "notifications." + path, when, message, state, delay, ignore_mask});
   // Also evaluate immediately when the reading changes, so a fault shows up
   // within one sensor update instead of waiting for the next resend.
   size_t idx = alarms_.size() - 1;
@@ -60,7 +60,9 @@ void SignalK::send_alarm_(Alarm &alarm) {
       condition = std::isnan(value);
       break;
     case AlarmWhen::NONZERO:
-      condition = !std::isnan(value) && value != 0.0f;
+      // Bits in ignore_mask are status flags, not faults (e.g. a BMS's "full"
+      // bit), so only the remaining bits count; the full code goes in the message.
+      condition = !std::isnan(value) && (static_cast<uint32_t>(value) & ~alarm.ignore_mask) != 0;
       if (condition) {
         char code[24];
         snprintf(code, sizeof(code), " (code 0x%04X)", static_cast<unsigned>(value));
