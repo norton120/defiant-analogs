@@ -54,16 +54,16 @@ Battery keys: `bank1a` `bank1b` `bank1c` `bank2a` `bank2b` `bank2c` `bank3-1`
 | `electrical.batteries.<key>.voltage` | V | |
 | `electrical.batteries.<key>.bmsProblemCode` | raw 16-bit code | 0 = nothing set |
 | `tanks.fuel.0.currentLevel` | ratio 0–1 | null when the sender reads out of range |
-| `notifications.electrical.batteries.<key>.bmsFault` | alarm | problem code has a bit outside `bms_status_bits` for 60s |
-| `notifications.electrical.batteries.<key>.notReporting` | alarm | no SoC for 60s |
 | `notifications.tanks.fuel.0.senderFault` | warn | sender open, shorted or chafed for 60s |
+
+**Battery alarms.** The BMS nodes deliberately raise no Signal K
+notifications. Battery state is shown on the AvNav power page instead; BMS
+alarms were noisy and drowned out the alarms that matter (e.g. bilge).
 
 **Problem-code bits.** TDT doesn't document these. On 2026-10-15, every pack
 sitting at 100% reported `0x0400`, or `0x0100` in one case, while the packs
-below 100% reported 0. Both bits are therefore treated as "full" status flags:
-`bms_status_bits: "0x0500"` in each bank YAML is passed as `ignore_mask`. Any
-other bit still raises `bmsFault`. If a code shows up that you can identify,
-add its bit to the mask or document it here.
+below 100% reported 0, so both bits look like "full" status flags. The raw
+code is published as `bmsProblemCode` for reference only.
 
 The **battery wall** total is the mean SoC and summed power of the 9 BMS packs.
 The Cerbo's "House Bank" SmartShunt drifts badly over time, so it is
